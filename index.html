@@ -5,14 +5,134 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Website</title>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.3.7/darkly/bootstrap.min.css">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+    <!--Google Fonts-->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Cookie">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lora">
+
+    <!--CSS files-->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ionicons/2.0.1/css/ionicons.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
-    <link rel="stylesheet" href="assets/css/styles.min.css">
+    <link rel="stylesheet" href="assets/css/styles.css">
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.10.3/paper-full.js"></script>
+    <script type="text/paperscript" canvas="myCanvas">
+
+    var values = {
+    	friction: 0.8,
+    	timeStep: 0.01,
+    	amount: 15,
+    	mass: 2,
+    	count: 0
+    };
+    values.invMass = 1 / values.mass;
+
+    var path, springs;
+    var size = view.size * [1.2, 1];
+
+    var Spring = function(a, b, strength, restLength) {
+    	this.a = a;
+    	this.b = b;
+    	this.restLength = restLength || 80;
+    	this.strength = strength ? strength : 0.55;
+    	this.mamb = values.invMass * values.invMass;
+    };
+
+    Spring.prototype.update = function() {
+    	var delta = this.b - this.a;
+    	var dist = delta.length;
+    	var normDistStrength = (dist - this.restLength) /
+    			(dist * this.mamb) * this.strength;
+    	delta.y *= normDistStrength * values.invMass * 0.2;
+    	if (!this.a.fixed)
+    		this.a.y += delta.y;
+    	if (!this.b.fixed)
+    		this.b.y -= delta.y;
+    };
+
+
+    function createPath(strength) {
+    	var path = new Path({
+    		fillColor: 'black'
+    	});
+    	springs = [];
+    	for (var i = 0; i <= values.amount; i++) {
+    		var segment = path.add(new Point(i / values.amount, 0.5) * size);
+    		var point = segment.point;
+    		if (i == 0 || i == values.amount)
+    			point.y += size.height;
+    		point.px = point.x;
+    		point.py = point.y;
+    		// The first two and last two points are fixed:
+    		point.fixed = i < 2 || i > values.amount - 2;
+    		if (i > 0) {
+    			var spring = new Spring(segment.previous.point, point, strength);
+    			springs.push(spring);
+    		}
+    	}
+    	path.position.x -= size.width / 4;
+    	return path;
+    }
+
+    function onResize() {
+    	if (path)
+    		path.remove();
+    	size = view.bounds.size * [2, 1];
+    	path = createPath(0.1);
+    }
+
+    function onMouseMove(event) {
+    	var location = path.getNearestLocation(event.point);
+    	var segment = location.segment;
+    	var point = segment.point;
+
+    	if (!point.fixed && location.distance < size.height / 4) {
+    		var y = event.point.y;
+    		point.y += (y - point.y) / 6;
+    		if (segment.previous && !segment.previous.fixed) {
+    			var previous = segment.previous.point;
+    			previous.y += (y - previous.y) / 24;
+    		}
+    		if (segment.next && !segment.next.fixed) {
+    			var next = segment.next.point;
+    			next.y += (y - next.y) / 24;
+    		}
+    	}
+    }
+
+    function onFrame(event) {
+    	updateWave(path);
+    }
+
+    function updateWave(path) {
+    	var force = 1 - values.friction * values.timeStep * values.timeStep;
+    	for (var i = 0, l = path.segments.length; i < l; i++) {
+    		var point = path.segments[i].point;
+    		var dy = (point.y - point.py) * force;
+    		point.py = point.y;
+    		point.y = Math.max(point.y + dy, 0);
+    	}
+
+    	for (var j = 0, l = springs.length; j < l; j++) {
+    		springs[j].update();
+    	}
+    	path.smooth({ type: 'continuous' });
+    }
+
+    function onKeyDown(event) {
+    	if (event.key == 'space') {
+    		path.fullySelected = !path.fullySelected;
+    		path.fillColor = path.fullySelected ? null : 'black';
+    	}
+    }
+</script>
 </head>
 
 <body>
@@ -74,7 +194,7 @@
         <div class="container">
             <div class="intro">
                 <h2 class="text-center">Powers </h2>
-                <p class="text-center">Nunc luctus in metus eget fringilla. Aliquam sed justo ligula. Vestibulum nibh erat, pellentesque ut laoreet vitae.</p>
+                <p class="text-center"></p>
             </div>
             <div class="row features">
                 <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12 item">
@@ -127,9 +247,16 @@
             </div>
         </footer>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
-    <script src="assets/js/script.min.js"></script>
+
+    <canvas id="myCanvas" resize>
+        <p>Hello sexy</p>
+    </canvas>
+
+    <!--JavaScript Files-->
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script src="assets/js/effects.js"></script>
+
 </body>
 
 </html>
